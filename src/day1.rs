@@ -18,46 +18,38 @@ pub fn part1(input: &Input) -> u32 {
 }
 
 pub fn part2(input: &Input) -> u32 {
+    const DIGIT_NAMES: [(&[u8], u32); 9] = [
+        (b"one", 1),
+        (b"two", 2),
+        (b"three", 3),
+        (b"four", 4),
+        (b"five", 5),
+        (b"six", 6),
+        (b"seven", 7),
+        (b"eight", 8),
+        (b"nine", 9),
+    ];
+
+    fn find_digit<T>(mut f: impl FnMut(&[u8], u32) -> Option<T>) -> Option<T> {
+        DIGIT_NAMES.into_iter().find_map(|(d, n)| f(d, n))
+    }
+
     input
         .iter()
         .map(|line| {
-            let (lhspos, lhs) = (0..line.len())
-                .find_map(|i| {
-                    let line = &line[i..];
-                    let b = line.as_bytes()[0];
-                    Some(match () {
-                        _ if b.is_ascii_digit() => (i + 1, (b - b'0') as u32),
-                        _ if line.starts_with("one") => (i + 3, 1),
-                        _ if line.starts_with("two") => (i + 3, 2),
-                        _ if line.starts_with("three") => (i + 5, 3),
-                        _ if line.starts_with("four") => (i + 4, 4),
-                        _ if line.starts_with("five") => (i + 4, 5),
-                        _ if line.starts_with("six") => (i + 3, 6),
-                        _ if line.starts_with("seven") => (i + 5, 7),
-                        _ if line.starts_with("eight") => (i + 5, 8),
-                        _ if line.starts_with("nine") => (i + 4, 9),
-                        _ => return None,
-                    })
+            let line = line.as_bytes();
+
+            let (rest, lhs) = std::iter::successors(Some(line), |line| line.get(1..))
+                .find_map(|line| match line.first() {
+                    Some(&b @ b'1'..=b'9') => Some((&line[1..], (b - b'0') as u32)),
+                    _ => find_digit(|d, n| line.strip_prefix(d).map(|rest| (rest, n))),
                 })
                 .unwrap();
-            let line = &line[lhspos..];
-            let rhs = (0..line.len())
-                .find_map(|i| {
-                    let line = &line[..line.len() - i];
-                    let b = line.as_bytes()[line.len() - 1];
-                    Some(match () {
-                        _ if b.is_ascii_digit() => (b - b'0') as u32,
-                        _ if line.ends_with("one") => 1,
-                        _ if line.ends_with("two") => 2,
-                        _ if line.ends_with("three") => 3,
-                        _ if line.ends_with("four") => 4,
-                        _ if line.ends_with("five") => 5,
-                        _ if line.ends_with("six") => 6,
-                        _ if line.ends_with("seven") => 7,
-                        _ if line.ends_with("eight") => 8,
-                        _ if line.ends_with("nine") => 9,
-                        _ => return None,
-                    })
+
+            let rhs = std::iter::successors(Some(rest), |line| line.get(..line.len() - 1))
+                .find_map(|line| match line.last() {
+                    Some(&b @ b'1'..=b'9') => Some((b - b'0') as u32),
+                    _ => find_digit(|d, n| line.ends_with(d).then(|| n)),
                 })
                 .unwrap_or(lhs);
 
