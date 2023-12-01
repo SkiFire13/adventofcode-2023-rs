@@ -10,52 +10,58 @@ pub fn part1(input: &Input) -> u32 {
     input
         .iter()
         .map(|line| {
-            (
-                line.chars().filter(|c| c.is_digit(10)).next().unwrap() as u8 - b'0',
-                line.chars().filter(|c| c.is_digit(10)).next_back().unwrap() as u8 - b'0',
-            )
+            let lhs = line.bytes().find(u8::is_ascii_digit).unwrap();
+            let rhs = line.bytes().rfind(u8::is_ascii_digit).unwrap();
+            (lhs - b'0') as u32 * 10 + (rhs - b'0') as u32
         })
-        .map(|(d1, d2)| d1 as u32 * 10 + d2 as u32)
         .sum()
 }
 
 pub fn part2(input: &Input) -> u32 {
-    let groups = [
-        ("1", 1),
-        ("2", 2),
-        ("3", 3),
-        ("4", 4),
-        ("5", 5),
-        ("6", 6),
-        ("7", 7),
-        ("8", 8),
-        ("9", 9),
-        ("one", 1),
-        ("two", 2),
-        ("three", 3),
-        ("four", 4),
-        ("five", 5),
-        ("six", 6),
-        ("seven", 7),
-        ("eight", 8),
-        ("nine", 9),
-    ];
-
     input
         .iter()
         .map(|line| {
-            let (_, lhs) = groups
-                .iter()
-                .filter_map(|(s, n)| Some((line.find(s)?, n)))
-                .min()
+            let (lhspos, lhs) = (0..line.len())
+                .find_map(|i| {
+                    let line = &line[i..];
+                    let b = line.as_bytes()[0];
+                    Some(match () {
+                        _ if b.is_ascii_digit() => (i + 1, (b - b'0') as u32),
+                        _ if line.starts_with("one") => (i + 3, 1),
+                        _ if line.starts_with("two") => (i + 3, 2),
+                        _ if line.starts_with("three") => (i + 5, 3),
+                        _ if line.starts_with("four") => (i + 4, 4),
+                        _ if line.starts_with("five") => (i + 4, 5),
+                        _ if line.starts_with("six") => (i + 3, 6),
+                        _ if line.starts_with("seven") => (i + 5, 7),
+                        _ if line.starts_with("eight") => (i + 5, 8),
+                        _ if line.starts_with("nine") => (i + 4, 9),
+                        _ => return None,
+                    })
+                })
                 .unwrap();
-            let (_, rhs) = groups
-                .iter()
-                .filter_map(|(s, n)| Some((line.rfind(s)?, n)))
-                .max()
-                .unwrap();
-            (lhs, rhs)
+            let line = &line[lhspos..];
+            let rhs = (0..line.len())
+                .find_map(|i| {
+                    let line = &line[..line.len() - i];
+                    let b = line.as_bytes()[line.len() - 1];
+                    Some(match () {
+                        _ if b.is_ascii_digit() => (b - b'0') as u32,
+                        _ if line.ends_with("one") => 1,
+                        _ if line.ends_with("two") => 2,
+                        _ if line.ends_with("three") => 3,
+                        _ if line.ends_with("four") => 4,
+                        _ if line.ends_with("five") => 5,
+                        _ if line.ends_with("six") => 6,
+                        _ if line.ends_with("seven") => 7,
+                        _ if line.ends_with("eight") => 8,
+                        _ if line.ends_with("nine") => 9,
+                        _ => return None,
+                    })
+                })
+                .unwrap_or(lhs);
+
+            lhs * 10 + rhs
         })
-        .map(|(d1, d2)| d1 * 10 + d2)
         .sum()
 }
