@@ -6,8 +6,8 @@ pub fn input_generator(input: &str) -> Input {
     input
         .lines()
         .map(|line| {
-            let (game, rest) = line.split_once(": ").unwrap();
-            let game = game[5..].parse().unwrap();
+            let (game, rest) = line[5..].split_once(": ").unwrap();
+            let game = game.parse().unwrap();
 
             let bags = rest
                 .split("; ")
