@@ -39,14 +39,14 @@ pub fn part2(input: &Input) -> u32 {
         .map(|line| {
             let line = line.as_bytes();
 
-            let (rest, lhs) = std::iter::successors(Some(line), |line| line.get(1..))
+            let (rest, lhs) = std::iter::successors(Some(line), |line| Some(line.split_first()?.1))
                 .find_map(|line| match line.first() {
                     Some(&b @ b'1'..=b'9') => Some((&line[1..], (b - b'0') as u32)),
                     _ => find_digit(|d, n| line.strip_prefix(d).map(|rest| (rest, n))),
                 })
                 .unwrap();
 
-            let rhs = std::iter::successors(Some(rest), |line| line.get(..line.len() - 1))
+            let rhs = std::iter::successors(Some(rest), |line| Some(line.split_last()?.1))
                 .find_map(|line| match line.last() {
                     Some(&b @ b'1'..=b'9') => Some((b - b'0') as u32),
                     _ => find_digit(|d, n| line.ends_with(d).then(|| n)),
