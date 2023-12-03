@@ -41,7 +41,7 @@ fn neighbours(x: usize, y: usize) -> impl Iterator<Item = (usize, usize)> {
 pub fn part1(input: &Input) -> usize {
     let (nums, pos_to_nums, symbols) = input;
 
-    let mut seen = HashSet::new();
+    let mut seen = FxHashSet::default();
     let mut sum = 0;
 
     for &(x, y, _) in symbols {
@@ -58,16 +58,20 @@ pub fn part1(input: &Input) -> usize {
 pub fn part2(input: &Input) -> usize {
     let (nums, pos_to_nums, symbols) = input;
 
-    let mut seen = HashSet::new();
+    let mut seen = FxHashSet::default();
     let mut sum = 0;
 
     for &(x, y, _) in symbols.iter().filter(|&&(_, _, c)| c == '*') {
+        let mut product = 1;
+
         for &n in neighbours(x, y).filter_map(|pos| pos_to_nums.get(&pos)) {
-            seen.insert(n);
+            if seen.insert(n) {
+                product *= nums[n];
+            }
         }
 
         if seen.len() >= 2 {
-            sum += seen.iter().map(|&idx| nums[idx]).product::<usize>();
+            sum += product;
         }
 
         seen.clear();
