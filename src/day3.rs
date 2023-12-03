@@ -16,27 +16,15 @@ pub fn input_generator(input: &str) -> Input {
         for (x, c) in line.chars().enumerate() {
             if c.is_ascii_digit() {
                 if !prev_number {
-                    nums.push(
-                        line[x..]
-                            .split(|c: char| !c.is_ascii_digit())
-                            .next()
-                            .unwrap()
-                            .parse::<usize>()
-                            .unwrap(),
-                    );
+                    let non_digit = |c: char| !c.is_ascii_digit();
+                    let num_str = line[x..].split(non_digit).next().unwrap();
+                    nums.push(num_str.parse::<usize>().unwrap());
                 }
-
-                let num_id = nums.len() - 1;
-                pos_to_nums.insert((x, y), num_id);
-
-                prev_number = true;
-            } else {
-                prev_number = false;
-
-                if c != '.' {
-                    symbols.push((x, y, c));
-                }
+                pos_to_nums.insert((x, y), nums.len() - 1);
+            } else if c != '.' {
+                symbols.push((x, y, c));
             }
+            prev_number = c.is_ascii_digit();
         }
     }
 
