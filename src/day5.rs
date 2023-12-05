@@ -41,61 +41,74 @@ pub fn part1(input: &Input) -> usize {
         .unwrap()
 }
 
-fn map_range(
-    mut seed_start: usize,
-    mut seed_len: usize,
-    mut map: &[(usize, usize, usize)],
-    mut f: impl FnMut(usize, usize),
-) {
-    while seed_len != 0 {
-        let Some(idx) = map
-            .iter()
-            .position(|&(_, map_start, map_len)| map_start + map_len > seed_start)
-            .filter(|&idx| map[idx].1 < seed_start + seed_len)
-        else {
-            f(seed_start, seed_len);
-            return;
-        };
-
-        let (mut map_dest, mut map_start, mut map_len) = map[idx];
-        map = &map[idx + 1..];
-
-        if map_start < seed_start {
-            map_start = seed_start;
-            map_dest += seed_start - map_start;
-            map_len -= seed_start - map_start;
-        } else if map_start > seed_start {
-            let len = map_start - seed_start;
-            f(seed_start, len);
-            seed_start += len;
-            seed_len -= len;
-        }
-
-        let len = min(map_len, seed_len);
-        f(map_dest, map_dest + len);
-        seed_start += len;
-        seed_len -= len;
-    }
-}
-
 pub fn part2(input: &Input) -> usize {
     let (seeds, maps) = input;
 
-    let mut maps = maps.clone();
-    maps.iter_mut()
-        .for_each(|map| map.sort_by_key(|&(dest, start, len)| (start, len, dest)));
+    let mut seeds = seeds.iter().copied().tuples().collect::<Vec<(_, _)>>();
+    let mut new_seeds = Vec::with_capacity(seeds.len());
 
-    let mut min_seed = usize::MAX;
-    let mut map_min = |start, _| min_seed = min(min_seed, start);
-    let mut map6 = |start, len| map_range(start, len, &maps[6], &mut map_min);
-    let mut map5 = |start, len| map_range(start, len, &maps[5], &mut map6);
-    let mut map4 = |start, len| map_range(start, len, &maps[4], &mut map5);
-    let mut map3 = |start, len| map_range(start, len, &maps[3], &mut map4);
-    let mut map2 = |start, len| map_range(start, len, &maps[2], &mut map3);
-    let mut map1 = |start, len| map_range(start, len, &maps[1], &mut map2);
-    let mut map0 = |start, len| map_range(start, len, &maps[0], &mut map1);
-    for (&start, &len) in seeds.iter().tuples() {
-        map0(start, len)
+    for map in maps {
+        let map = map
+            .iter()
+            .copied()
+            .sorted_by_key(|&(dest, start, len)| (start, len, dest))
+            .collect::<Vec<_>>();
+
+        for &(mut seed_start, mut seed_len) in &seeds {
+            while seed_len != 0 {
+                let idx = map
+                    .partition_point(|&(_, map_start, map_len)| map_start + map_len <= seed_start);
+                if idx >= map.len() {
+                    new_seeds.push((seed_start, seed_len));
+                    break;
+                }
+
+                let (mut map_dest, map_start, mut map_len) = map[idx];
+                if map_start >= seed_start + seed_len {
+                    new_seeds.push((seed_start, seed_len));
+                    break;
+                }
+
+                if map_start < seed_start {
+                    let skip = seed_start - map_start;
+                    map_dest += skip;
+                    map_len -= skip;
+                } else if map_start > seed_start {
+                    let len = map_start - seed_start;
+                    new_seeds.push((seed_start, len));
+                    seed_start = map_start;
+                    seed_len -= len;
+                }
+
+                let len = min(map_len, seed_len);
+                new_seeds.push((map_dest, len));
+                seed_start += len;
+                seed_len -= len;
+            }
+        }
+
+        seeds.clear();
+        mem::swap(&mut seeds, &mut new_seeds);
+
+        seeds.sort();
+
+        let mut i = 0;
+        for j in 1..seeds.len() {
+            let (i_start, i_len) = seeds[i];
+            let (j_start, j_len) = seeds[j];
+            if i_start + i_len >= j_start {
+                let end = max(i_start + i_len, j_start + j_len);
+                seeds[i] = (i_start, end - i_start);
+            } else {
+                if i_len != 0 {
+                    i += 1;
+                }
+                seeds[i] = seeds[j];
+            }
+        }
+        seeds.truncate(i + 1);
     }
-    min_seed
+
+    let (start, _) = seeds[0];
+    start
 }
