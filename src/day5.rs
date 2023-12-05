@@ -58,15 +58,7 @@ pub fn part2(input: &Input) -> usize {
             .sorted()
             .collect::<Vec<_>>();
 
-        seeds.sort();
-        let iter = seeds
-            .iter()
-            .copied()
-            .coalesce(|(i_start, i_end), (j_start, j_end)| match () {
-                _ if i_end >= j_start => Ok((i_start, max(i_end, j_end))),
-                _ => Err(((i_start, i_end), (j_start, j_end))),
-            });
-        iter.for_each(|(mut seed_start, seed_end)| {
+        for &(mut seed_start, seed_end) in &seeds {
             for &(map_start, map_end, map_dest) in &map {
                 if map_end <= seed_start {
                     continue;
@@ -89,11 +81,13 @@ pub fn part2(input: &Input) -> usize {
             if seed_start != seed_end {
                 new_seeds.push((seed_start, seed_end));
             }
-        });
+        }
 
         mem::swap(&mut seeds, &mut new_seeds);
         new_seeds.clear();
+        seeds.sort();
     }
 
-    seeds.iter().map(|&(start, _)| start).min().unwrap()
+    let (start, _) = seeds[0];
+    start
 }
