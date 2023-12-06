@@ -20,10 +20,7 @@ pub fn input_generator(input: &str) -> Input {
 pub fn part1(input: &Input) -> u64 {
     let (times, records) = input;
     let mut acc = 1;
-    for i in 0..times.len() {
-        let time = times[i];
-        let record = records[i];
-
+    for (&time, &record) in iter::zip(times, records) {
         let mut wins = 0;
         for j in 0..time {
             let v = j;
