@@ -17,20 +17,12 @@ pub fn input_generator(input: &str) -> Input {
     (times, records)
 }
 
-pub fn part1(input: &Input) -> u64 {
+pub fn part1(input: &Input) -> usize {
     let (times, records) = input;
-    let mut acc = 1;
-    for (&time, &record) in iter::zip(times, records) {
-        let mut wins = 0;
-        for j in 0..time {
-            let v = j;
-            let tr = time - j;
-            let dist = v * tr;
-            wins += (dist > record) as u64;
-        }
-        acc *= wins;
-    }
-    acc
+
+    iter::zip(times, records)
+        .map(|(&time, &record)| (0..time).filter(|v| v * (time - v) > record).count())
+        .product()
 }
 
 pub fn part2(input: &Input) -> u64 {
@@ -48,8 +40,11 @@ pub fn part2(input: &Input) -> u64 {
     let record = records.iter().fold(0, concat);
 
     let ds = f64::sqrt((time * time - 4 * record) as f64);
-    let min = (time - ds.floor() as u64) / 2;
-    let max = (time + ds.ceil() as u64) / 2;
+    let mut min = (time - ds.ceil() as u64) / 2;
+    let mut max = (time + ds.ceil() as u64) / 2;
+
+    min += (min * (time - min) <= record) as u64;
+    max -= (max * (time - max) <= record) as u64;
 
     max - min + 1
 }
