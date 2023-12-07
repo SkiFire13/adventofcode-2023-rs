@@ -67,7 +67,7 @@ fn solve<const PART2: bool>(input: &Input) -> usize {
     input
         .iter()
         .map(|&(cards, bid)| (kind::<PART2>(cards), cards.map(n::<PART2>), bid))
-        .sorted()
+        .sorted_unstable()
         .enumerate()
         .map(|(i, (_, _, bid))| (i + 1) * bid)
         .sum()
