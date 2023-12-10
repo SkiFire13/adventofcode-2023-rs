@@ -55,33 +55,18 @@ pub fn part1(input: &Input) -> usize {
 pub fn part2(input: &Input) -> usize {
     let mut seen = Grid::with_dimensions(input.w(), input.h()).into_set();
     let start_symb = visit_loop(input, |x, y| seen[(x, y)] = true);
-    let get_symb = |x, y| match input[(x, y)] {
-        b'S' => start_symb,
-        b => b,
-    };
 
     let mut count = 0;
     for y in 0..input.h() {
         let mut inside = false;
-        let mut x = 0;
-        while x < input.w() {
+        for x in 0..input.w() {
             if seen.contains((x, y)) {
-                let symb = get_symb(x, y);
-                if symb == b'|' {
-                    inside = !inside;
-                } else {
-                    x = (x + 1..).find(|&x| get_symb(x, y) != b'-').unwrap();
-
-                    match (symb, get_symb(x, y)) {
-                        (b'F', b'J') | (b'L', b'7') => inside = !inside,
-                        (b'F', b'7') | (b'L', b'J') => {}
-                        _ => unreachable!(),
-                    }
-                }
+                let symb = input[(x, y)];
+                let symb = if symb == b'S' { start_symb } else { symb };
+                inside = inside ^ matches!(symb, b'|' | b'L' | b'J');
             } else if inside {
                 count += 1;
             }
-            x += 1;
         }
     }
     count
