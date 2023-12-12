@@ -15,62 +15,36 @@ pub fn input_generator(input: &str) -> Input {
 }
 
 fn count(pat: &[u8], nums: &[usize]) -> usize {
-    let fillable = pat.iter().filter(|&&b| b != b'.').count();
-    let to_fill = nums.iter().sum();
-    return count_inner(pat, nums, fillable, to_fill, &mut FxHashMap::default());
+    let mut dp = vec![0; (pat.len() + 1) * (nums.len() + 1)];
 
-    fn count_inner(
-        pat: &[u8],
-        nums: &[usize],
-        mut fillable: usize,
-        to_fill: usize,
-        cache: &mut FxHashMap<(usize, usize), usize>,
-    ) -> usize {
-        if nums.len() == 0 {
-            return if pat.contains(&b'#') { 0 } else { 1 };
-        }
-
-        if fillable < to_fill {
-            return 0;
-        }
-
-        if let Some(&ret) = cache.get(&(pat.len(), nums.len())) {
-            return ret;
-        }
-
-        let mut count = 0;
-
-        for pos in 0..=pat.len().saturating_sub(nums[0]) {
-            if pat[pos] == b'.' {
-                continue;
-            }
-
-            let all_fillable = pat[pos..pos + nums[0]].iter().all(|&b| b != b'.');
-            let next_not_filled = pat.get(pos + nums[0]) != Some(&b'#');
-
-            if all_fillable && next_not_filled {
-                let next_is_fillable = pat.get(pos + nums[0]) == Some(&b'?');
-                let fillable = fillable - nums[0] - next_is_fillable as usize;
-                let to_fill = to_fill - nums[0];
-                let pat = pat.get(pos + nums[0] + 1..).unwrap_or(&[]);
-                count += count_inner(pat, &nums[1..], fillable, to_fill, cache);
-            }
-
-            match pat[pos] {
-                b'?' => fillable -= 1,
-                b'#' => break,
-                _ => {}
-            }
-
-            if fillable < to_fill {
-                break;
-            }
-        }
-
-        cache.insert((pat.len(), nums.len()), count);
-
-        count
+    let offset = (pat.len() + 1) * nums.len();
+    dp[offset + pat.len()] = 1;
+    for j in (0..pat.len()).rev().take_while(|&j| pat[j] != b'#') {
+        dp[offset + j] = 1;
     }
+
+    for i in (0..nums.len()).rev() {
+        let mut streak = 0;
+        for j in (0..pat.len()).rev() {
+            streak += 1;
+            if pat[j] == b'.' {
+                streak = 0;
+            }
+
+            if pat[j] != b'#' {
+                dp[(pat.len() + 1) * i + j] = dp[(pat.len() + 1) * i + j + 1];
+            }
+
+            let prev = j.checked_sub(1).map(|j| pat[j]).unwrap_or(b'.');
+            let next = pat.get(j + nums[i]).copied().unwrap_or(b'.');
+            if streak >= nums[i] && prev != b'#' && next != b'#' {
+                let next_idx = j + nums[i] + (j + nums[i] < pat.len()) as usize;
+                dp[(pat.len() + 1) * i + j] += dp[(pat.len() + 1) * (i + 1) + next_idx];
+            }
+        }
+    }
+
+    dp[0]
 }
 
 pub fn part1(input: &Input) -> usize {
