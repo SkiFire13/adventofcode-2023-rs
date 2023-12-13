@@ -9,30 +9,38 @@ pub fn input_generator(input: &str) -> Input {
         .collect()
 }
 
-pub fn part1(input: &Input) -> usize {
+fn exactly_n(mut iter: impl Iterator, n: usize) -> bool {
+    iter.try_fold(n, |acc, _| acc.checked_sub(1)) == Some(0)
+}
+
+fn solve(input: &Input, target: usize) -> usize {
     input
         .iter()
         .map(|grid| {
             for row in 1..grid.h() {
-                let up = &grid.vec[row.saturating_sub(grid.h() - row) * grid.w()..row * grid.w()];
-                let down = &grid.vec[row * grid.w()..min(2 * row, grid.h()) * grid.w()];
-
-                if iter::zip(up.chunks_exact(grid.w()), down.chunks_exact(grid.w()).rev())
-                    .all(|(up, down)| up == down)
-                {
+                let size = min(row, grid.h() - row);
+                let up = &grid.vec[(row - size) * grid.w()..row * grid.w()];
+                let down = &grid.vec[row * grid.w()..(row + size) * grid.w()];
+                let iter = iter::zip(up.chunks_exact(grid.w()), down.chunks_exact(grid.w()).rev())
+                    .flat_map(|(up, down)| iter::zip(up, down))
+                    .filter(|(up, down)| up != down);
+                if exactly_n(iter, target) {
                     return 100 * row;
                 }
             }
 
-            let grid = Grid::with_dimensions_init(grid.h(), grid.w(), |x, y| grid[(y, x)]);
-            for row in 1..grid.h() {
-                let up = &grid.vec[row.saturating_sub(grid.h() - row) * grid.w()..row * grid.w()];
-                let down = &grid.vec[row * grid.w()..min(2 * row, grid.h()) * grid.w()];
-
-                if iter::zip(up.chunks_exact(grid.w()), down.chunks_exact(grid.w()).rev())
-                    .all(|(up, down)| up == down)
-                {
-                    return row;
+            for col in 1..grid.w() {
+                let size = min(col, grid.w() - col);
+                let rows = grid.vec.chunks_exact(grid.w());
+                let iter = rows
+                    .flat_map(|row| {
+                        let left = &row[col - size..col];
+                        let right = row[col..][..size].iter().rev();
+                        iter::zip(left, right)
+                    })
+                    .filter(|(up, down)| up != down);
+                if exactly_n(iter, target) {
+                    return col;
                 }
             }
 
@@ -41,39 +49,10 @@ pub fn part1(input: &Input) -> usize {
         .sum()
 }
 
+pub fn part1(input: &Input) -> usize {
+    solve(input, 0)
+}
+
 pub fn part2(input: &Input) -> usize {
-    input
-        .iter()
-        .map(|grid| {
-            for row in 1..grid.h() {
-                let up = &grid.vec[row.saturating_sub(grid.h() - row) * grid.w()..row * grid.w()];
-                let down = &grid.vec[row * grid.w()..min(2 * row, grid.h()) * grid.w()];
-
-                if iter::zip(up.chunks_exact(grid.w()), down.chunks_exact(grid.w()).rev())
-                    .flat_map(|(r1, r2)| iter::zip(r1, r2))
-                    .filter(|&(up, down)| up != down)
-                    .exactly_one()
-                    .is_ok()
-                {
-                    return 100 * row;
-                }
-            }
-
-            let grid = Grid::with_dimensions_init(grid.h(), grid.w(), |x, y| grid[(y, x)]);
-            for row in 1..grid.h() {
-                let up = &grid.vec[row.saturating_sub(grid.h() - row) * grid.w()..row * grid.w()];
-                let down = &grid.vec[row * grid.w()..min(2 * row, grid.h()) * grid.w()];
-                if iter::zip(up.chunks_exact(grid.w()), down.chunks_exact(grid.w()).rev())
-                    .flat_map(|(r1, r2)| iter::zip(r1, r2))
-                    .filter(|&(up, down)| up != down)
-                    .exactly_one()
-                    .is_ok()
-                {
-                    return row;
-                }
-            }
-
-            unreachable!()
-        })
-        .sum()
+    solve(input, 1)
 }
