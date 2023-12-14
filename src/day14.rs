@@ -34,52 +34,61 @@ pub fn part1(input: &Input) -> usize {
 pub fn part2(input: &Input) -> usize {
     let mut seen = FxHashMap::default();
 
+    let mut last_acc = vec![0; input.w()];
     let mut input = input.clone();
 
     let mut curr = 0;
     while curr < 1000000000 {
         seen.insert(input.clone(), curr);
 
-        for y in 1..input.h() {
+        last_acc.fill(0);
+        for y in 0..input.h() {
+            for (x, last) in last_acc.iter_mut().enumerate() {
+                if input[(x, y)] == b'O' {
+                    input[(x, y)] = b'.';
+                    input[(x, *last)] = b'O';
+                    *last += 1;
+                } else if input[(x, y)] == b'#' {
+                    *last = y + 1;
+                }
+            }
+        }
+
+        for y in 0..input.h() {
+            let mut last = 0;
             for x in 0..input.w() {
-                let mut y = y;
-                while y > 0 && input[(x, y)] == b'O' && input[(x, y - 1)] == b'.' {
+                if input[(x, y)] == b'O' {
                     input[(x, y)] = b'.';
-                    input[(x, y - 1)] = b'O';
-                    y -= 1;
+                    input[(last, y)] = b'O';
+                    last += 1;
+                } else if input[(x, y)] == b'#' {
+                    last = x + 1;
                 }
             }
         }
 
-        for x in 1..input.w() {
-            for y in 0..input.h() {
-                let mut x = x;
-                while x > 0 && input[(x, y)] == b'O' && input[(x - 1, y)] == b'.' {
+        last_acc.fill(input.h());
+        for y in (0..input.h()).rev() {
+            for (x, last) in last_acc.iter_mut().enumerate().rev() {
+                if input[(x, y)] == b'O' {
+                    *last -= 1;
                     input[(x, y)] = b'.';
-                    input[(x - 1, y)] = b'O';
-                    x -= 1;
+                    input[(x, *last)] = b'O';
+                } else if input[(x, y)] == b'#' {
+                    *last = y;
                 }
             }
         }
 
-        for y in (0..input.h() - 1).rev() {
-            for x in 0..input.w() {
-                let mut y = y;
-                while y < input.h() - 1 && input[(x, y)] == b'O' && input[(x, y + 1)] == b'.' {
+        for y in (0..input.h()).rev() {
+            let mut last = input.w();
+            for x in (0..input.w()).rev() {
+                if input[(x, y)] == b'O' {
+                    last -= 1;
                     input[(x, y)] = b'.';
-                    input[(x, y + 1)] = b'O';
-                    y += 1;
-                }
-            }
-        }
-
-        for x in (0..input.w() - 1).rev() {
-            for y in 0..input.h() {
-                let mut x = x;
-                while x < input.w() - 1 && input[(x, y)] == b'O' && input[(x + 1, y)] == b'.' {
-                    input[(x, y)] = b'.';
-                    input[(x + 1, y)] = b'O';
-                    x += 1;
+                    input[(last, y)] = b'O';
+                } else if input[(x, y)] == b'#' {
+                    last = x;
                 }
             }
         }
@@ -91,9 +100,9 @@ pub fn part2(input: &Input) -> usize {
             let cycle_offset = old;
             let answer = (1000000000 - cycle_offset) % cycle_len + cycle_offset;
             input = seen
-                .iter()
-                .find(|(_, &i)| i == answer)
-                .map(|(grid, _)| grid.clone())
+                .drain()
+                .find(|&(_, i)| i == answer)
+                .map(|(grid, _)| grid)
                 .unwrap();
             break;
         }
