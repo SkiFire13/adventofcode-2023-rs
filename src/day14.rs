@@ -96,7 +96,7 @@ pub fn part2(input: &Input) -> usize {
         curr += 1;
 
         if let Some(&old) = seen.get(&input) {
-            let cycle_len = old - curr;
+            let cycle_len = curr - old;
             let cycle_offset = old;
             let answer = (1000000000 - cycle_offset) % cycle_len + cycle_offset;
             input = seen
