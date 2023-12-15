@@ -21,22 +21,15 @@ pub fn part2(input: &Input) -> usize {
     for instr in input {
         let label = instr.split(|&b| b == b'-' || b == b'=').next().unwrap();
         let lens = &mut lenses[hash(label) as usize];
-        match instr[label.len()] {
-            b'-' => {
-                if let Some(idx) = lens.iter().position(|&(s, _)| s == label) {
-                    lens.remove(idx);
-                }
-            }
-            b'=' => {
-                let n = instr[label.len() + 1..]
-                    .iter()
-                    .fold(0, |acc, &b| 10 * acc + (b - b'0') as u32);
-                if let Some(idx) = lens.iter().position(|&(s, _)| s == label) {
-                    lens[idx].1 = n;
-                } else {
-                    lens.push((label, n));
-                }
-            }
+        let pos = lens.iter().position(|&(s, _)| s == label);
+        let n = instr[label.len() + 1..]
+            .iter()
+            .fold(0, |acc, &b| 10 * acc + (b - b'0') as u32);
+        match (instr[label.len()], pos) {
+            (b'-', Some(pos)) => drop(lens.remove(pos)),
+            (b'-', None) => {}
+            (b'=', Some(pos)) => lens[pos] = (label, n),
+            (b'=', None) => lens.push((label, n)),
             _ => unreachable!(),
         }
     }
