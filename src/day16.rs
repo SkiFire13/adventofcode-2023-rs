@@ -15,7 +15,9 @@ fn solve(input: &Input, start: (i8, i8), v: (i8, i8)) -> usize {
             continue;
         };
 
-        if !seen.insert(((x, y), (dx, dy))) {
+        let dir_id = (dx + dy + 1 + (dx > dy) as i8) as usize * input.w() * input.h();
+        let idx = dir_id as u16 + input.w() as u16 * y as u16 + x as u16;
+        if !seen.insert(idx) {
             continue;
         }
 
@@ -31,7 +33,10 @@ fn solve(input: &Input, start: (i8, i8), v: (i8, i8)) -> usize {
         }
     }
 
-    seen.into_iter().map(|(pos, _)| pos).unique().count()
+    seen.into_iter()
+        .map(|idx| idx % (input.h() * input.w()) as u16)
+        .unique()
+        .count()
 }
 
 pub fn part1(input: &Input) -> usize {
