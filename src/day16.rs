@@ -8,18 +8,19 @@ pub fn input_generator(input: &str) -> Input {
 
 fn solve(input: &Input, start: (i8, i8), v: (i8, i8)) -> usize {
     let mut queue = vec![(start, v)];
-    let mut seen = FxHashSet::default();
+    let mut seen = Grid::<u8>::with_dimensions(input.w(), input.h());
 
     while let Some(((x, y), (dx, dy))) = queue.pop() {
         let Some(tile) = input.iget((x as isize, y as isize)) else {
             continue;
         };
 
-        let dir_id = (dx + dy + 1 + (dx > dy) as i8) as usize * input.w() * input.h();
-        let idx = dir_id as u16 + input.w() as u16 * y as u16 + x as u16;
-        if !seen.insert(idx) {
+        let dir_id = (dx + dy + 1 + (dx > dy) as i8) as u8;
+        let seen_value = &mut seen[(x as isize, y as isize)];
+        if *seen_value & (1 << dir_id) != 0 {
             continue;
         }
+        *seen_value |= 1 << dir_id;
 
         match (tile, (dx, dy)) {
             (b'.', _) => queue.push(((x + dx, y + dy), (dx, dy))),
@@ -33,10 +34,7 @@ fn solve(input: &Input, start: (i8, i8), v: (i8, i8)) -> usize {
         }
     }
 
-    seen.into_iter()
-        .map(|idx| idx % (input.h() * input.w()) as u16)
-        .unique()
-        .count()
+    seen.iter().filter(|&(_, &idx)| idx != 0).count()
 }
 
 pub fn part1(input: &Input) -> usize {
