@@ -6,43 +6,27 @@ pub fn input_generator(input: &str) -> Input {
     Grid::from_input_chars(input, |c, _, _| c as u8)
 }
 
-fn solve(input: &Input, start: (isize, isize), v: (isize, isize)) -> usize {
-    let mut queue = VecDeque::new();
+fn solve(input: &Input, start: (i8, i8), v: (i8, i8)) -> usize {
+    let mut queue = vec![(start, v)];
     let mut seen = FxHashSet::default();
 
-    let (nx, ny) = start;
-    let (dx, dy) = v;
+    while let Some(((x, y), (dx, dy))) = queue.pop() {
+        let Some(tile) = input.iget((x as isize, y as isize)) else {
+            continue;
+        };
 
-    match (input[(nx, ny)], (dx, dy)) {
-        (b'.', _) => queue.push_back(((nx, ny), (dx, dy))),
-        (b'|', (0, _)) => queue.push_back(((nx, ny), (dx, dy))),
-        (b'-', (_, 0)) => queue.push_back(((nx, ny), (dx, dy))),
-        (b'|', (_, 0)) => queue.extend([((nx, ny), (0, 1)), ((nx, ny), (0, -1))]),
-        (b'-', (0, _)) => queue.extend([((nx, ny), (1, 0)), ((nx, ny), (-1, 0))]),
-        (b'/', _) => queue.push_back(((nx, ny), (-dy, -dx))),
-        (b'\\', _) => queue.push_back(((nx, ny), (dy, dx))),
-        _ => panic!(),
-    }
-
-    while let Some(((x, y), (dx, dy))) = queue.pop_front() {
         if !seen.insert(((x, y), (dx, dy))) {
             continue;
         }
 
-        let (nx, ny) = (x + dx, y + dy);
-
-        if nx < 0 || nx >= input.w() as isize || ny < 0 || ny >= input.h() as isize {
-            continue;
-        }
-
-        match (input[(nx, ny)], (dx, dy)) {
-            (b'.', _) => queue.push_back(((nx, ny), (dx, dy))),
-            (b'|', (0, _)) => queue.push_back(((nx, ny), (dx, dy))),
-            (b'-', (_, 0)) => queue.push_back(((nx, ny), (dx, dy))),
-            (b'|', (_, 0)) => queue.extend([((nx, ny), (0, 1)), ((nx, ny), (0, -1))]),
-            (b'-', (0, _)) => queue.extend([((nx, ny), (1, 0)), ((nx, ny), (-1, 0))]),
-            (b'/', _) => queue.push_back(((nx, ny), (-dy, -dx))),
-            (b'\\', _) => queue.push_back(((nx, ny), (dy, dx))),
+        match (tile, (dx, dy)) {
+            (b'.', _) => queue.push(((x + dx, y + dy), (dx, dy))),
+            (b'|', (0, _)) => queue.push(((x + dx, y + dy), (dx, dy))),
+            (b'-', (_, 0)) => queue.push(((x + dx, y + dy), (dx, dy))),
+            (b'|', (_, 0)) => queue.extend([((x, y + 1), (0, 1)), ((x, y - 1), (0, -1))]),
+            (b'-', (0, _)) => queue.extend([((x + 1, y), (1, 0)), ((x - 1, y), (-1, 0))]),
+            (b'/', _) => queue.push(((x - dy, y - dx), (-dy, -dx))),
+            (b'\\', _) => queue.push(((x + dy, y + dx), (dy, dx))),
             _ => panic!(),
         }
     }
@@ -55,23 +39,16 @@ pub fn part1(input: &Input) -> usize {
 }
 
 pub fn part2(input: &Input) -> usize {
-    let top = (0..input.w() as isize)
-        .into_par_iter()
-        .map(|x| ((x, 0), (0, 1)));
-    let bottom = (0..input.w() as isize)
-        .into_par_iter()
-        .map(|x| ((x, input.h() as isize - 1), (0, -1)));
-    let left = (0..input.h() as isize)
-        .into_par_iter()
-        .map(|y| ((0, y), (1, 0)));
-    let right = (0..input.h() as isize)
-        .into_par_iter()
-        .map(|y| ((input.w() as isize - 1, y), (-1, 0)));
+    let (w, h) = (input.w(), input.h());
+    let top = (0..w).into_par_iter().map(|x| ((x, 0), (0, 1)));
+    let bottom = (0..w).into_par_iter().map(|x| ((x, h - 1), (0, -1)));
+    let left = (0..h).into_par_iter().map(|y| ((0, y), (1, 0)));
+    let right = (0..h).into_par_iter().map(|y| ((w - 1, y), (-1, 0)));
 
     top.chain(bottom)
         .chain(left)
         .chain(right)
-        .map(|(pos, v)| solve(input, pos, v))
+        .map(|((x, y), (dx, dy))| solve(input, (x as i8, y as i8), (dx as i8, dy as i8)))
         .max()
         .unwrap()
 }
