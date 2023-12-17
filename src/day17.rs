@@ -7,7 +7,7 @@ pub fn input_generator(input: &str) -> Input {
 }
 
 fn solve(input: &Input, steps: std::ops::Range<usize>) -> usize {
-    let mut seen = vec![0u64; (input.w() * input.h() * 2 + 63) / 64];
+    let mut seen = bitbox![0; input.w() * input.h() * 2];
     let mut queue = BinaryHeap::from([(Reverse(0), 0, 0, true), (Reverse(0), 0, 0, false)]);
 
     while let Some((Reverse(loss), x, y, vert)) = queue.pop() {
@@ -16,11 +16,9 @@ fn solve(input: &Input, steps: std::ops::Range<usize>) -> usize {
         }
 
         let key = y as usize * input.w() + x as usize + input.vec.len() * vert as usize;
-        let (pos, shift) = (key / 64, key % 64);
-        if seen[pos] & (1 << shift) != 0 {
+        if seen.replace(key, true) {
             continue;
         }
-        seen[pos] |= 1 << shift;
 
         let (bdx, bdy) = if vert { (0, 1) } else { (1, 0) };
         for (dx, dy) in [(bdx, bdy), (-bdx, -bdy)] {
