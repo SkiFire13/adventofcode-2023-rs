@@ -6,49 +6,45 @@ pub fn input_generator(input: &str) -> Input {
     Grid::from_input_chars(input, |c, _, _| c as u8 - b'0')
 }
 
-fn solve<E, T, S>(input: &Input, end_cond: E, turn_cond: T, step_cond: S) -> usize
-where
-    E: Fn(usize) -> bool,
-    T: Fn(usize) -> bool,
-    S: Fn(usize) -> bool,
-{
-    let mut seen = FxHashSet::default();
-    let mut queue = BinaryHeap::from([(Reverse(0), 0, 0, 0, 0, 0)]);
+fn solve(input: &Input, steps: std::ops::Range<usize>) -> usize {
+    let mut seen = vec![0u64; (input.w() * input.h() * 2 + 63) / 64];
+    let mut queue = BinaryHeap::from([(Reverse(0), 0, 0, true), (Reverse(0), 0, 0, false)]);
 
-    while let Some((Reverse(loss), x, y, s, dx, dy)) = queue.pop() {
-        if x == input.w() as isize - 1 && y == input.h() as isize - 1 && end_cond(s) {
+    while let Some((Reverse(loss), x, y, vert)) = queue.pop() {
+        if x == input.w() as isize - 1 && y == input.h() as isize - 1 {
             return loss;
         }
 
-        if !seen.insert((x, y, s, dx, dy)) {
+        let key = y as usize * input.w() + x as usize + input.vec.len() * vert as usize;
+        let (pos, shift) = (key / 64, key % 64);
+        if seen[pos] & (1 << shift) != 0 {
             continue;
         }
+        seen[pos] |= 1 << shift;
 
-        queue.extend(
-            [(1, 0), (-1, 0), (0, 1), (0, -1)]
-                .into_iter()
-                .filter(|&(ndx, ndy)| turn_cond(s) || (ndx, ndy) == (dx, dy))
-                .filter(|&(ndx, ndy)| step_cond(s) || (ndx, ndy) != (dx, dy))
-                .filter(|&(ndx, ndy)| (ndx, ndy) != (-dx, -dy))
-                .map(|(ndx, ndy)| (x + ndx, y + ndy, ndx, ndy))
-                .filter(|&(x, y, _, _)| {
-                    x >= 0 && y >= 0 && x < input.w() as isize && y < input.h() as isize
-                })
-                .map(|(x, y, ndx, ndy)| {
-                    let s = if (ndx, ndy) == (dx, dy) { s + 1 } else { 1 };
-                    let loss = loss + input[(x, y)] as usize;
-                    (Reverse(loss), x, y, s, ndx, ndy)
-                }),
-        );
+        let (bdx, bdy) = if vert { (0, 1) } else { (1, 0) };
+        for (dx, dy) in [(bdx, bdy), (-bdx, -bdy)] {
+            let (mut x, mut y, mut loss) = (x, y, loss);
+            for i in 1..steps.end {
+                (x, y) = (x + dx, y + dy);
+                let Some(&cost) = input.iget((x, y)) else {
+                    break;
+                };
+                loss = loss + cost as usize;
+                if i >= steps.start {
+                    queue.push((Reverse(loss), x, y, !vert));
+                }
+            }
+        }
     }
 
     unreachable!()
 }
 
 pub fn part1(input: &Input) -> usize {
-    solve(input, |_| true, |_| true, |s| s < 3)
+    solve(input, 1..(3 + 1))
 }
 
 pub fn part2(input: &Input) -> usize {
-    solve(input, |s| s >= 4, |s| s == 0 || s >= 4, |s| s < 10)
+    solve(input, 4..(10 + 1))
 }
