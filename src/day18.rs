@@ -1,5 +1,3 @@
-use core::panic;
-
 #[allow(unused_imports)]
 use super::prelude::*;
 type Input = Vec<(u8, usize, [u8; 6])>;
