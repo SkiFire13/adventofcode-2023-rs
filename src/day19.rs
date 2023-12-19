@@ -53,12 +53,7 @@ pub fn part1(input: &Input) -> usize {
             let mut rating = "in";
             loop {
                 for &(c, is_greater, n, next) in &ratings[rating] {
-                    let cond = match is_greater {
-                        true => xmas[c] > n,
-                        false => xmas[c] < n,
-                    };
-
-                    if cond {
+                    if if is_greater { xmas[c] > n } else { xmas[c] < n } {
                         match next {
                             "A" => return true,
                             "R" => return false,
