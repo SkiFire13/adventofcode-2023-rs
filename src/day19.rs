@@ -75,13 +75,6 @@ pub fn part2(input: &Input) -> usize {
     let mut candidates = vec![("in", [(1, 4001); 4])];
 
     while let Some((rule, mut xmas)) = candidates.pop() {
-        if let "A" | "R" = rule {
-            if rule == "A" {
-                count += xmas.iter().map(|(s, e)| e - s).product::<usize>();
-            }
-            continue;
-        }
-
         for &(c, is_greater, n, next) in &ratings[rule] {
             let (c1, c2) = xmas[c];
             let n = Ord::clamp(n + is_greater as usize, c1, c2);
@@ -91,9 +84,12 @@ pub fn part2(input: &Input) -> usize {
             };
 
             if sat.0 < sat.1 {
-                let mut new = xmas;
-                new[c] = sat;
-                candidates.push((next, new));
+                xmas[c] = sat;
+                match next {
+                    "A" => count += xmas.iter().map(|(s, e)| e - s).product::<usize>(),
+                    "R" => {}
+                    _ => candidates.push((next, xmas)),
+                }
             }
 
             if unsat.0 >= unsat.1 {
