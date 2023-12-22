@@ -6,61 +6,72 @@ pub fn input_generator(input: &str) -> Input {
     Grid::from_input_chars(input, |c, _, _| c as u8)
 }
 
-fn visit(input: &Input, start: (usize, usize), steps: usize) -> FxHashSet<(usize, usize)> {
-    let mut frontier = FxHashSet::default();
-    let mut new_frontier = FxHashSet::default();
+fn reachable_in(input: &Input, start: (usize, usize), steps: usize) -> usize {
+    let mut seen = bitbox![0; input.vec.len()];
+    let mut seen_next = bitbox![0; input.vec.len()];
 
-    frontier.insert(start);
+    let mut frontier = Vec::new();
+    let mut frontier_next = Vec::new();
+
+    let encode = |(x, y)| input.w() * y + x;
+
+    seen.set(encode(start), true);
+    frontier.push(start);
 
     for _ in 0..steps {
-        new_frontier.clear();
-
-        for &pos in &frontier {
-            new_frontier.extend(input.plus_neighbours(pos).filter(|&pos| input[pos] != b'#'));
+        for pos in frontier.drain(..) {
+            for next in input.plus_neighbours(pos) {
+                if input[next] != b'#' && !seen_next.replace(encode(next), true) {
+                    frontier_next.push(next);
+                }
+            }
         }
 
-        (frontier, new_frontier) = (new_frontier, frontier);
+        swap(&mut frontier, &mut frontier_next);
+        swap(&mut seen, &mut seen_next);
     }
 
-    frontier
+    seen.count_ones()
 }
 
 pub fn part1(input: &Input) -> usize {
     let (start_pos, _) = input.iter().find(|(_, &b)| b == b'S').unwrap();
-    visit(input, start_pos, 64).len()
+    reachable_in(input, start_pos, 64)
 }
 
 pub fn part2(input: &Input) -> usize {
     let (start_pos, _) = input.iter().find(|(_, &b)| b == b'S').unwrap();
 
-    let mut even = FxHashSet::default();
-    even.insert(start_pos);
-    let mut odd = FxHashSet::default();
+    let mut seen = bitbox![0; input.vec.len()];
+    let mut seen_next = bitbox![0; input.vec.len()];
 
-    for _ in 0.. {
-        let (even_prev, odd_prev) = (even.len(), odd.len());
+    let mut frontier = Vec::new();
+    let mut frontier_next = Vec::new();
 
-        odd.clear();
-        for &pos in &even {
-            odd.extend(input.plus_neighbours(pos).filter(|&pos| input[pos] != b'#'));
-        }
+    let encode = |(x, y)| input.w() * y + x;
 
-        even.clear();
-        for &pos in &odd {
-            even.extend(input.plus_neighbours(pos).filter(|&pos| input[pos] != b'#'));
-        }
+    seen.set(encode(start_pos), true);
+    frontier.push(start_pos);
 
-        if even.len() == even_prev && odd.len() == odd_prev {
-            break;
+    while !frontier.is_empty() {
+        for _ in 0..2 {
+            for pos in frontier.drain(..) {
+                for next in input.plus_neighbours(pos) {
+                    if input[next] != b'#' && !seen_next.replace(encode(next), true) {
+                        frontier_next.push(next);
+                    }
+                }
+            }
+
+            swap(&mut frontier, &mut frontier_next);
+            swap(&mut seen, &mut seen_next);
         }
     }
 
+    let (even, odd) = (seen.count_ones(), seen_next.count_ones());
+
     assert!(input.w() % 2 == 1);
     assert!(input.w() == input.h());
-    assert!(even.contains(&(0, 0)));
-    assert!(even.contains(&(input.w() - 1, 0)));
-    assert!(even.contains(&(0, input.h() - 1)));
-    assert!(even.contains(&(input.w() - 1, input.h() - 1)));
 
     let mut distances = Grid::with_dimensions_init(input.w(), input.h(), |_, _| usize::MAX);
     let mut queue = VecDeque::from([(start_pos, 0)]);
@@ -80,7 +91,7 @@ pub fn part2(input: &Input) -> usize {
 
     const N: usize = 26501365;
 
-    let mut tot = if N % 2 == 0 { even.len() } else { odd.len() };
+    let mut tot = if N % 2 == 0 { even } else { odd };
 
     let top_left = (0usize, 0);
     let top_right = (input.w() - 1, 0);
@@ -111,10 +122,10 @@ pub fn part2(input: &Input) -> usize {
         let full_k2 = ((full_steps - 1) / 2) * ((full_steps - 1) / 2 + 1);
 
         let mut tot = 0;
-        tot += full_k1 * if N % 2 == 0 { even.len() } else { odd.len() };
-        tot += full_k2 * if N % 2 == 0 { odd.len() } else { even.len() };
-        tot += full_steps * visit(input, start, half_remainder + input.w()).len();
-        tot += (full_steps + 1) * visit(input, start, half_remainder).len();
+        tot += full_k1 * if N % 2 == 0 { even } else { odd };
+        tot += full_k2 * if N % 2 == 0 { odd } else { even };
+        tot += full_steps * reachable_in(input, start, half_remainder + input.w());
+        tot += (full_steps + 1) * reachable_in(input, start, half_remainder);
         tot
     };
 
@@ -128,11 +139,11 @@ pub fn part2(input: &Input) -> usize {
         let half_remainder = N - input.w() * full_steps;
 
         let mut tot = 0;
-        tot += full_steps / 2 * if N % 2 == 0 { odd.len() } else { even.len() };
-        tot += (full_steps - 1) / 2 * if N % 2 == 0 { even.len() } else { odd.len() };
-        tot += visit(input, start, input.w() / 2 + half_remainder).len();
+        tot += full_steps / 2 * if N % 2 == 0 { odd } else { even };
+        tot += (full_steps - 1) / 2 * if N % 2 == 0 { even } else { odd };
+        tot += reachable_in(input, start, input.w() / 2 + half_remainder);
         if half_remainder > input.w() / 2 {
-            tot += visit(input, start, half_remainder - input.w() / 2 - 1).len();
+            tot += reachable_in(input, start, half_remainder - input.w() / 2 - 1);
         }
 
         tot
