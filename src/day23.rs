@@ -16,6 +16,7 @@ fn simplify_graph<const PART2: bool>(input: &Input) -> Vec<ArrayVec<(usize, usiz
     let mut pos_to_node = FxHashMap::from_iter([(node_poss[0], 0), (node_poss[1], 1)]);
     let mut explored = FxHashSet::default();
     let mut to_visit = vec![0];
+    let mut prev_end = None;
 
     explored.reserve(128);
     pos_to_node.reserve(64);
@@ -40,6 +41,7 @@ fn simplify_graph<const PART2: bool>(input: &Input) -> Vec<ArrayVec<(usize, usiz
 
                 if (x, y) == (end, input.h() - 1) {
                     node_edges[node].push((1, d));
+                    prev_end = Some(node);
                     break;
                 }
 
@@ -69,6 +71,8 @@ fn simplify_graph<const PART2: bool>(input: &Input) -> Vec<ArrayVec<(usize, usiz
             }
         }
     }
+
+    node_edges[prev_end.unwrap()].retain(|&mut (next, _)| next == 1);
 
     node_edges
 }
