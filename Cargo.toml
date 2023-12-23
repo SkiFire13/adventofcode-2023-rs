@@ -8,5 +8,3 @@ edition = "2021"
 
 [dependencies]
 aoc-helper = { git = "https://github.com/SkiFire13/adventofcode-helper-rs" }
-
-stacker = "*"
