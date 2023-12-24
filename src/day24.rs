@@ -32,23 +32,18 @@ pub fn part1(input: &Input) -> usize {
         let dx = x2 - x1;
         let dy = y2 - y1;
 
-        let t2_up = vy1 * dx - dy * vx1;
-        let t2_down = vy2 * vx1 - vy1 * vx2;
+        let (t2_up, t2_down) = (vy1 * dx - dy * vx1, vy2 * vx1 - vy1 * vx2);
+        let (t1_up, t1_down) = (dy * vx2 - vy2 * dx, vy1 * vx2 - vy2 * vx1);
 
-        let t1_up = dy * vx2 - vy2 * dx;
-        let t1_down = vy1 * vx2 - vy2 * vx1;
-
-        if t2_down == 0 || t2_up.signum() * t2_down.signum() == -1 {
+        if t2_up.signum() != t2_down.signum() || t1_up.signum() != t1_down.signum() {
             continue;
         }
-        if t1_down == 0 || t1_up.signum() * t1_down.signum() == -1 {
-            continue;
-        }
-
-        let (t2_up, t2_down) = (t2_up.abs(), t2_down.abs());
 
         const MIN: i128 = 200000000000000;
         const MAX: i128 = 400000000000000;
+
+        let (t2_up, t2_down) = (t2_up.abs() as i128, t2_down.abs() as i128);
+        let (x2, y2, vx2, vy2) = (x2 as i128, y2 as i128, vx2 as i128, vy2 as i128);
 
         if ((MIN - x2) * t2_down <= t2_up * vx2 && t2_up * vx2 <= (MAX - x2) * t2_down)
             && ((MIN - y2) * t2_down <= t2_up * vy2 && t2_up * vy2 <= (MAX - y2) * t2_down)
@@ -60,41 +55,42 @@ pub fn part1(input: &Input) -> usize {
     count
 }
 
-pub fn part2(input: &Input) -> usize {
-    use std::fmt::Write as _;
-    let mut s = String::new();
-    _ = writeln!(s, "from z3 import *");
-    _ = writeln!(s, "x = Real('x')");
-    _ = writeln!(s, "y = Real('y')");
-    _ = writeln!(s, "z = Real('z')");
-    _ = writeln!(s, "vx = Real('vx')");
-    _ = writeln!(s, "vy = Real('vy')");
-    _ = writeln!(s, "vz = Real('vz')");
-    _ = writeln!(s, "s = Solver()");
-    for i in 0..input.len() {
-        let (x, y, z, vx, vy, vz) = input[i];
-        let i = i + 1;
-        _ = writeln!(s, "t{i} = Real('t{i}')");
-        _ = writeln!(s, "s.add({x} + {vx} * t{i} == x + vx * t{i})");
-        _ = writeln!(s, "s.add({y} + {vy} * t{i} == y + vy * t{i})");
-        _ = writeln!(s, "s.add({z} + {vz} * t{i} == z + vz * t{i})");
-    }
-    _ = writeln!(s, "s.check()");
-    _ = writeln!(s, "print(sum(int(str(s.model()[v])) for v in [x, y, z]))");
+pub fn part2(input: &Input) -> u64 {
+    let (x1, y1, z1, vx1, vy1, vz1) = input[0];
+    let (x2, y2, z2, vx2, vy2, vz2) = input[1];
+    let (x3, y3, z3, vx3, vy3, vz3) = input[2];
 
-    let mut p = std::process::Command::new("python3")
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .spawn()
-        .unwrap();
-    let mut stdin = p.stdin.take().unwrap();
-    use std::io::Write as _;
-    stdin.write_all(s.as_bytes()).unwrap();
-    stdin.flush().unwrap();
-    drop(stdin);
-    String::from_utf8(p.wait_with_output().unwrap().stdout)
-        .unwrap()
-        .trim()
-        .parse()
-        .unwrap()
+    let [x1, y1, z1, vx1, vy1, vz1] = [x1, y1, z1, vx1, vy1, vz1].map(|c| c as f64);
+    let [x2, y2, z2, vx2, vy2, vz2] = [x2, y2, z2, vx2, vy2, vz2].map(|c| c as f64);
+    let [x3, y3, z3, vx3, vy3, vz3] = [x3, y3, z3, vx3, vy3, vz3].map(|c| c as f64);
+
+    #[rustfmt::skip]
+    let mut coeffs = [
+        [0., -vz1 + vz2, vy1 - vy2, 0., z1 - z2, -y1 + y2, vy1 * z1 - vy2 * z2 - vz1 * y1 + vz2 * y2],
+        [vz1 - vz2, 0., -vx1 + vx2, -z1 + z2, 0., x1 - x2, -vx1 * z1 + vx2 * z2 + vz1 * x1 - vz2 * x2 ],
+        [-vy1 + vy2, vx1 - vx2, 0., y1 - y2, -x1 + x2, 0., vx1 * y1 - vx2 * y2 - vy1 * x1 + vy2 * x2],
+        [0., -vz2 + vz3, vy2 - vy3, 0., z2 - z3, -y2 + y3, vy2 * z2 - vy3 * z3 - vz2 * y2 + vz3 * y3],
+        [vz2 - vz3, 0., -vx2 + vx3, -z2 + z3, 0., x2 - x3, -vx2 * z2 + vx3 * z3 + vz2 * x2 - vz3 * x3 ],
+        [-vy2 + vy3, vx2 - vx3, 0., y2 - y3, -x2 + x3, 0., vx2 * y2 - vx3 * y3 - vy2 * x2 + vy3 * x3],
+    ];
+
+    for i in 0..6 {
+        let j = (i..6).max_by(|&j, &k| f64::total_cmp(&coeffs[j][i].abs(), &coeffs[k][i].abs()));
+        coeffs.swap(i, j.unwrap());
+        (i..7).rev().for_each(|j| coeffs[i][j] /= coeffs[i][i]);
+        for j in i + 1..6 {
+            for k in (i..7).rev() {
+                coeffs[j][k] -= coeffs[i][k] * coeffs[j][i];
+            }
+        }
+    }
+
+    for i in (1..6).rev() {
+        for j in 0..i {
+            coeffs[j][6] -= coeffs[j][i] * coeffs[i][6];
+            coeffs[j][i] = 0.;
+        }
+    }
+
+    (coeffs[0][6] + coeffs[1][6] + coeffs[2][6]) as u64
 }
