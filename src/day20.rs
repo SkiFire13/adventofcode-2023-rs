@@ -43,24 +43,25 @@ pub fn input_generator(input: &str) -> Input {
     nodes
 }
 
-fn solve(input: &Input, mut cb: impl FnMut(usize, u8, bool, u8) -> ControlFlow<()>) {
+pub fn part1(input: &Input) -> usize {
+    let (mut lows, mut highs) = (0, 0);
+
     let mut inv_states = vec![false; input.len()];
     let mut conj_low_counts = vec![0; input.len()];
-    let mut conj_states = FxHashMap::default();
-    for (key, (pre, kind, _)) in input.iter().enumerate() {
-        if *kind == b'&' {
-            for &prev in pre {
-                conj_states.insert((key as u8, prev), false);
-            }
-        }
-    }
+    let mut conj_states = input
+        .iter()
+        .enumerate()
+        .filter(|&(_, &(_, kind, _))| kind == b'&')
+        .flat_map(|(key, (pre, _, _))| pre.iter().map(move |&prev| ((key as u8, prev), false)))
+        .collect::<FxHashMap<_, _>>();
 
     let mut queue = VecDeque::new();
-    for i in 1.. {
+    for _ in 1..1001 {
         queue.push_back((0, false, 0));
         while let Some((prev, is_high, curr)) = queue.pop_front() {
-            if cb(i, prev, is_high, curr).is_break() {
-                return;
+            match is_high {
+                true => highs += 1,
+                false => lows += 1,
             }
 
             let (pre, kind, post) = &input[curr as usize];
@@ -92,50 +93,38 @@ fn solve(input: &Input, mut cb: impl FnMut(usize, u8, bool, u8) -> ControlFlow<(
             }
         }
     }
-}
-
-pub fn part1(input: &Input) -> usize {
-    let (mut lows, mut highs) = (0, 0);
-
-    solve(input, |i, _, is_high, _| {
-        if i == 1001 {
-            return ControlFlow::Break(());
-        }
-
-        match is_high {
-            true => highs += 1,
-            false => lows += 1,
-        }
-
-        ControlFlow::Continue(())
-    });
 
     lows * highs
 }
 
 pub fn part2(input: &Input) -> usize {
+    let (_, _, post_broadcaster) = &input[0];
     let (rx_pre, _, _) = &input[1];
-    assert_eq!(rx_pre.len(), 1);
-    let (rx_pre_pre, rx_pre_kind, _) = &input[rx_pre[0] as usize];
-    assert_eq!(rx_pre_kind, &b'&');
-    let mut rx_pre_pre = rx_pre_pre
-        .iter()
-        .map(|&prev| (prev, 0))
-        .collect::<FxHashMap<_, _>>();
-    let mut rx_pre_pre_seen = 0;
+    let (rx_pre_pre, _, _) = &input[rx_pre[0] as usize];
 
-    solve(input, |i, prev, is_high, curr| {
-        if is_high && curr == rx_pre[0] {
-            if let Some(prev_iter @ 0) = rx_pre_pre.get_mut(&prev) {
-                *prev_iter = i;
-                rx_pre_pre_seen += 1;
-                if rx_pre_pre_seen == rx_pre_pre.len() {
-                    return ControlFlow::Break(());
-                }
+    let mut cycles = 1;
+
+    for &post_center in rx_pre_pre {
+        let (center, _, _) = &input[post_center as usize];
+        let center = center[0];
+
+        let &(mut curr) = post_broadcaster
+            .iter()
+            .filter(|&&i| input[i as usize].2.contains(&center))
+            .exactly_one()
+            .unwrap();
+
+        let mut acc = 0;
+        for i in 0.. {
+            let (_, _, next) = &input[curr as usize];
+            acc |= (next.contains(&center) as usize) << i;
+            match next.iter().filter(|&&i| i != center).exactly_one() {
+                Ok(&next) => curr = next,
+                Err(_) => break,
             }
         }
-        ControlFlow::Continue(())
-    });
+        cycles *= acc;
+    }
 
-    rx_pre_pre.values().product()
+    cycles
 }
