@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use super::prelude::*;
-type Input = Vec<(i128, i128, i128, i128, i128, i128)>;
+type Input = Vec<[i64; 6]>;
 
 pub fn input_generator(input: &str) -> Input {
     input
@@ -11,13 +11,7 @@ pub fn input_generator(input: &str) -> Input {
             let (y, z) = yz.split_once(", ").unwrap();
             let (vx, vyz) = v.split_once(", ").unwrap();
             let (vy, vz) = vyz.split_once(", ").unwrap();
-            let x = x.parse().unwrap();
-            let y = y.parse().unwrap();
-            let z = z.parse().unwrap();
-            let vx = vx.parse().unwrap();
-            let vy = vy.parse().unwrap();
-            let vz = vz.parse().unwrap();
-            (x, y, z, vx, vy, vz)
+            [x, y, z, vx, vy, vz].map(|n| n.parse().unwrap())
         })
         .collect()
 }
@@ -26,8 +20,8 @@ pub fn part1(input: &Input) -> usize {
     let mut count = 0;
 
     for (&p1, &p2) in input.iter().tuple_combinations() {
-        let (x1, y1, _, vx1, vy1, _) = p1;
-        let (x2, y2, _, vx2, vy2, _) = p2;
+        let [x1, y1, _, vx1, vy1, _] = p1;
+        let [x2, y2, _, vx2, vy2, _] = p2;
 
         let dx = x2 - x1;
         let dy = y2 - y1;
@@ -56,22 +50,18 @@ pub fn part1(input: &Input) -> usize {
 }
 
 pub fn part2(input: &Input) -> u64 {
-    let (x1, y1, z1, vx1, vy1, vz1) = input[0];
-    let (x2, y2, z2, vx2, vy2, vz2) = input[1];
-    let (x3, y3, z3, vx3, vy3, vz3) = input[2];
-
-    let [x1, y1, z1, vx1, vy1, vz1] = [x1, y1, z1, vx1, vy1, vz1].map(|c| c as f64);
-    let [x2, y2, z2, vx2, vy2, vz2] = [x2, y2, z2, vx2, vy2, vz2].map(|c| c as f64);
-    let [x3, y3, z3, vx3, vy3, vz3] = [x3, y3, z3, vx3, vy3, vz3].map(|c| c as f64);
+    let [x1, y1, z1, vx1, vy1, vz1] = input[0].map(|c| c as f64);
+    let [x2, y2, z2, vx2, vy2, vz2] = input[1].map(|c| c as f64);
+    let [x3, y3, z3, vx3, vy3, vz3] = input[2].map(|c| c as f64);
 
     #[rustfmt::skip]
     let mut coeffs = [
-        [0., -vz1 + vz2, vy1 - vy2, 0., z1 - z2, -y1 + y2, vy1 * z1 - vy2 * z2 - vz1 * y1 + vz2 * y2],
-        [vz1 - vz2, 0., -vx1 + vx2, -z1 + z2, 0., x1 - x2, -vx1 * z1 + vx2 * z2 + vz1 * x1 - vz2 * x2 ],
-        [-vy1 + vy2, vx1 - vx2, 0., y1 - y2, -x1 + x2, 0., vx1 * y1 - vx2 * y2 - vy1 * x1 + vy2 * x2],
-        [0., -vz2 + vz3, vy2 - vy3, 0., z2 - z3, -y2 + y3, vy2 * z2 - vy3 * z3 - vz2 * y2 + vz3 * y3],
-        [vz2 - vz3, 0., -vx2 + vx3, -z2 + z3, 0., x2 - x3, -vx2 * z2 + vx3 * z3 + vz2 * x2 - vz3 * x3 ],
-        [-vy2 + vy3, vx2 - vx3, 0., y2 - y3, -x2 + x3, 0., vx2 * y2 - vx3 * y3 - vy2 * x2 + vy3 * x3],
+        [0., -vz1 + vz2, vy1 - vy2, 0., z1 - z2, -y1 + y2,  vy1 * z1 - vy2 * z2 - vz1 * y1 + vz2 * y2],
+        [vz1 - vz2, 0., -vx1 + vx2, -z1 + z2, 0., x1 - x2, -vx1 * z1 + vx2 * z2 + vz1 * x1 - vz2 * x2],
+        [-vy1 + vy2, vx1 - vx2, 0., y1 - y2, -x1 + x2, 0.,  vx1 * y1 - vx2 * y2 - vy1 * x1 + vy2 * x2],
+        [0., -vz2 + vz3, vy2 - vy3, 0., z2 - z3, -y2 + y3,  vy2 * z2 - vy3 * z3 - vz2 * y2 + vz3 * y3],
+        [vz2 - vz3, 0., -vx2 + vx3, -z2 + z3, 0., x2 - x3, -vx2 * z2 + vx3 * z3 + vz2 * x2 - vz3 * x3],
+        [-vy2 + vy3, vx2 - vx3, 0., y2 - y3, -x2 + x3, 0.,  vx2 * y2 - vx3 * y3 - vy2 * x2 + vy3 * x3],
     ];
 
     for i in 0..6 {
