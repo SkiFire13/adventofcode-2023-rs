@@ -1,6 +1,6 @@
 #[allow(unused_imports)]
 use super::prelude::*;
-type Input = (Vec<Vec<(usize, usize)>>, usize);
+type Input = (Vec<Vec<(u16, u16)>>, usize);
 
 pub fn input_generator(input: &str) -> Input {
     let mut node_to_id = FxHashMap::default();
@@ -12,17 +12,17 @@ pub fn input_generator(input: &str) -> Input {
 
         let key_id = *node_to_id.entry(key).or_insert_with(|| {
             edges.push(Vec::new());
-            edges.len() - 1
+            edges.len() as u16 - 1
         });
 
         for other in rest.split(' ') {
             let other_id = *node_to_id.entry(other).or_insert_with(|| {
                 edges.push(Vec::new());
-                edges.len() - 1
+                edges.len() as u16 - 1
             });
 
-            edges[key_id].push((other_id, next_edge_id));
-            edges[other_id].push((key_id, next_edge_id));
+            edges[key_id as usize].push((other_id, next_edge_id as u16));
+            edges[other_id as usize].push((key_id, next_edge_id as u16));
             next_edge_id += 1;
         }
     }
@@ -35,7 +35,7 @@ pub fn part1(input: &Input) -> usize {
     let mut set1 = bitbox![0; node_to_edges.len()];
     let mut min_cut = bitbox![0; edge_count];
     let mut min_cut_len = 0;
-    let mut to_visit = Vec::<(usize, usize)>::new();
+    let mut to_visit = Vec::<(u16, u16)>::new();
     let mut visited = bitbox![0; node_to_edges.len()];
 
     set1.set(0, true);
@@ -43,44 +43,46 @@ pub fn part1(input: &Input) -> usize {
     to_visit.extend(&node_to_edges[0]);
 
     let mut edges_seen = bitbox![0; edge_count];
-    let mut prev = vec![(usize::MAX, usize::MAX); node_to_edges.len()];
+    let mut prev = vec![(u16::MAX, u16::MAX); node_to_edges.len()];
     let mut queue = VecDeque::new();
 
     'outer: while let Some((curr, edge)) = to_visit.pop() {
-        if visited.replace(curr, true) {
+        if visited.replace(curr as usize, true) {
             continue;
         }
 
         edges_seen.fill(false);
 
         'inner: for _ in 0..4 {
-            prev.fill((usize::MAX, usize::MAX));
-            prev[curr] = (usize::MAX - 1, usize::MAX - 1);
+            prev.fill((u16::MAX, u16::MAX));
+            prev[curr as usize] = (u16::MAX - 1, u16::MAX - 1);
             queue.clear();
-            for &(node, edge) in &node_to_edges[curr] {
-                if !edges_seen[edge] {
-                    prev[node] = (curr, edge);
+            for &(node, edge) in &node_to_edges[curr as usize] {
+                if !edges_seen[edge as usize] {
+                    prev[node as usize] = (curr, edge);
                     queue.push_back((node, edge));
                 }
             }
 
             while let Some((mut curr, mut edge)) = queue.pop_front() {
-                if set1[curr] {
-                    while curr != usize::MAX - 1 {
-                        edges_seen.set(edge, true);
-                        (curr, edge) = prev[curr];
+                if set1[curr as usize] {
+                    while curr != u16::MAX - 1 {
+                        edges_seen.set(edge as usize, true);
+                        (curr, edge) = prev[curr as usize];
                     }
                     continue 'inner;
                 }
-                for &(next, next_edge) in &node_to_edges[curr] {
-                    if !edges_seen[next_edge] && prev[next] == (usize::MAX, usize::MAX) {
-                        prev[next] = (curr, edge);
+                for &(next, next_edge) in &node_to_edges[curr as usize] {
+                    if !edges_seen[next_edge as usize]
+                        && prev[next as usize] == (u16::MAX, u16::MAX)
+                    {
+                        prev[next as usize] = (curr, edge);
                         queue.push_back((next, next_edge));
                     }
                 }
             }
 
-            min_cut.set(edge, true);
+            min_cut.set(edge as usize, true);
             min_cut_len += 1;
             if min_cut_len == 3 {
                 let mut seen = FxHashSet::default();
@@ -88,8 +90,8 @@ pub fn part1(input: &Input) -> usize {
 
                 while let Some(curr) = queue.pop() {
                     if seen.insert(curr) {
-                        for &(node, edge) in &node_to_edges[curr] {
-                            if !min_cut[edge] {
+                        for &(node, edge) in &node_to_edges[curr as usize] {
+                            if !min_cut[edge as usize] {
                                 queue.push(node);
                             }
                         }
@@ -102,8 +104,8 @@ pub fn part1(input: &Input) -> usize {
             continue 'outer;
         }
 
-        set1.set(curr, true);
-        for &(node, edge) in &node_to_edges[curr] {
+        set1.set(curr as usize, true);
+        for &(node, edge) in &node_to_edges[curr as usize] {
             to_visit.push((node, edge));
         }
     }
