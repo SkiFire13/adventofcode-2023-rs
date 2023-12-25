@@ -83,24 +83,20 @@ pub fn part1(input: &Input) -> usize {
             min_cut.set(edge, true);
             min_cut_len += 1;
             if min_cut_len == 3 {
-                let mut prod = 1;
-                for start in [0, curr] {
-                    let mut seen = FxHashSet::default();
-                    let mut queue = vec![start];
+                let mut seen = FxHashSet::default();
+                let mut queue = vec![0];
 
-                    while let Some(curr) = queue.pop() {
-                        if seen.insert(curr) {
-                            for &(node, edge) in &node_to_edges[curr] {
-                                if !min_cut[edge] {
-                                    queue.push(node);
-                                }
+                while let Some(curr) = queue.pop() {
+                    if seen.insert(curr) {
+                        for &(node, edge) in &node_to_edges[curr] {
+                            if !min_cut[edge] {
+                                queue.push(node);
                             }
                         }
                     }
-
-                    prod *= seen.len();
                 }
-                return prod;
+
+                return seen.len() * (node_to_edges.len() - seen.len());
             }
 
             continue 'outer;
