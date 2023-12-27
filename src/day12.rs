@@ -52,27 +52,30 @@ pub fn part1(input: &Input) -> usize {
 }
 
 pub fn part2(input: &Input) -> usize {
-    let mut dp = Vec::new();
-    let mut new_pat = Vec::new();
-    let mut new_nums = Vec::new();
     input
-        .iter()
-        .map(|&(pat, ref nums)| {
-            new_pat.clear();
-            new_pat.reserve(pat.len() * 5 + 4);
-            new_pat.extend_from_slice(pat);
-
-            new_nums.clear();
-            new_nums.reserve(nums.len() * 5);
-            new_nums.extend_from_slice(nums);
-
-            for _ in 1..5 {
-                new_pat.push(b'?');
+        .par_iter()
+        .fold(
+            || (0, Vec::new(), Vec::new(), Vec::new()),
+            |(mut sum, mut dp, mut new_pat, mut new_nums), &(pat, ref nums)| {
+                new_pat.clear();
+                new_pat.reserve(pat.len() * 5 + 4);
                 new_pat.extend_from_slice(pat);
-                new_nums.extend_from_slice(nums);
-            }
 
-            count(&new_pat, &new_nums, &mut dp)
-        })
+                new_nums.clear();
+                new_nums.reserve(nums.len() * 5);
+                new_nums.extend_from_slice(nums);
+
+                for _ in 1..5 {
+                    new_pat.push(b'?');
+                    new_pat.extend_from_slice(pat);
+                    new_nums.extend_from_slice(nums);
+                }
+
+                sum += count(&new_pat, &new_nums, &mut dp);
+
+                (sum, dp, new_pat, new_nums)
+            },
+        )
+        .map(|(sum, _, _, _)| sum)
         .sum()
 }
