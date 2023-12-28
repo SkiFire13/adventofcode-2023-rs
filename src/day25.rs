@@ -4,109 +4,99 @@ type Input = (Vec<Vec<(u16, u16)>>, usize);
 
 pub fn input_generator(input: &str) -> Input {
     let mut node_to_id = FxHashMap::default();
-    let mut edges = Vec::new();
+    let mut node_to_edges = Vec::new();
     let mut next_edge_id = 0;
 
     for line in input.lines() {
         let (key, rest) = line.split_once(": ").unwrap();
 
         let key_id = *node_to_id.entry(key).or_insert_with(|| {
-            edges.push(Vec::new());
-            edges.len() as u16 - 1
+            node_to_edges.push(Vec::new());
+            node_to_edges.len() as u16 - 1
         });
 
         for other in rest.split(' ') {
             let other_id = *node_to_id.entry(other).or_insert_with(|| {
-                edges.push(Vec::new());
-                edges.len() as u16 - 1
+                node_to_edges.push(Vec::new());
+                node_to_edges.len() as u16 - 1
             });
 
-            edges[key_id as usize].push((other_id, next_edge_id as u16));
-            edges[other_id as usize].push((key_id, next_edge_id as u16));
-            next_edge_id += 1;
+            node_to_edges[key_id as usize].push((other_id, next_edge_id as u16));
+            node_to_edges[other_id as usize].push((key_id, next_edge_id as u16 + 1));
+            next_edge_id += 2;
         }
     }
-    (edges, next_edge_id)
+    (node_to_edges, next_edge_id)
 }
 
 pub fn part1(input: &Input) -> usize {
     let &(ref node_to_edges, edge_count) = input;
 
-    let mut set1 = bitbox![0; node_to_edges.len()];
-    let mut min_cut = bitbox![0; edge_count];
-    let mut min_cut_len = 0;
-    let mut to_visit = Vec::<(u16, u16)>::new();
-    let mut visited = bitbox![0; node_to_edges.len()];
-
-    set1.set(0, true);
-    visited.set(0, true);
-    to_visit.extend(&node_to_edges[0]);
-
-    let mut edges_seen = bitbox![0; edge_count];
-    let mut prev = vec![(u16::MAX, u16::MAX); node_to_edges.len()];
     let mut queue = VecDeque::new();
+    let mut prev = vec![(0, 0); node_to_edges.len()];
+    let mut free_edges = bitbox![1; edge_count * 2];
+    let mut seen = bitbox![0; node_to_edges.len()];
 
-    'outer: while let Some((curr, edge)) = to_visit.pop() {
-        if visited.replace(curr as usize, true) {
-            continue;
+    queue.push_back(0);
+    seen.set(0, true);
+    let mut best_candidate = 0;
+    while let Some(curr) = queue.pop_front() {
+        best_candidate = curr;
+        for &(next, _) in &node_to_edges[curr as usize] {
+            if !seen.replace(next as usize, true) {
+                queue.push_back(next);
+            }
         }
+    }
 
-        edges_seen.fill(false);
+    let random_candidates = [()]
+        .into_iter()
+        .flat_map(|_| (1..node_to_edges.len() as u16).collect::<HashSet<_>>());
 
-        'inner: for _ in 0..4 {
+    for end in [best_candidate].into_iter().chain(random_candidates) {
+        free_edges.fill(true);
+        for _ in 0..3 {
             prev.fill((u16::MAX, u16::MAX));
-            prev[curr as usize] = (u16::MAX - 1, u16::MAX - 1);
-            queue.clear();
-            for &(node, edge) in &node_to_edges[curr as usize] {
-                if !edges_seen[edge as usize] {
-                    prev[node as usize] = (curr, edge);
-                    queue.push_back((node, edge));
-                }
-            }
+            prev[0] = (u16::MAX - 1, u16::MAX - 1);
+            queue.resize(1, 0);
 
-            while let Some((mut curr, mut edge)) = queue.pop_front() {
-                if set1[curr as usize] {
-                    while curr != u16::MAX - 1 {
-                        edges_seen.set(edge as usize, true);
-                        (curr, edge) = prev[curr as usize];
-                    }
-                    continue 'inner;
-                }
-                for &(next, next_edge) in &node_to_edges[curr as usize] {
-                    if !edges_seen[next_edge as usize]
-                        && prev[next as usize] == (u16::MAX, u16::MAX)
-                    {
+            while let Some(curr) = queue.pop_front() {
+                for &(next, edge) in &node_to_edges[curr as usize] {
+                    if prev[next as usize] == (u16::MAX, u16::MAX) && free_edges[edge as usize] {
                         prev[next as usize] = (curr, edge);
-                        queue.push_back((next, next_edge));
-                    }
-                }
-            }
-
-            min_cut.set(edge as usize, true);
-            min_cut_len += 1;
-            if min_cut_len == 3 {
-                let mut seen = FxHashSet::default();
-                let mut queue = vec![0];
-
-                while let Some(curr) = queue.pop() {
-                    if seen.insert(curr) {
-                        for &(node, edge) in &node_to_edges[curr as usize] {
-                            if !min_cut[edge as usize] {
-                                queue.push(node);
-                            }
+                        queue.push_back(next);
+                        if next == end {
+                            break;
                         }
                     }
                 }
-
-                return seen.len() * (node_to_edges.len() - seen.len());
             }
 
-            continue 'outer;
+            assert_ne!(prev[end as usize], (u16::MAX, u16::MAX));
+
+            let (mut curr, mut edge) = prev[end as usize];
+            while (curr, edge) != (u16::MAX - 1, u16::MAX - 1) {
+                let inv_edge_used = free_edges[edge as usize ^ 1];
+                free_edges.set(edge as usize, !inv_edge_used);
+                free_edges.set(edge as usize ^ 1, true);
+                (curr, edge) = prev[curr as usize];
+            }
         }
 
-        set1.set(curr as usize, true);
-        for &(node, edge) in &node_to_edges[curr as usize] {
-            to_visit.push((node, edge));
+        queue.resize(1, 0);
+        seen.fill(false);
+        seen.set(0, true);
+        let mut nseen = 1;
+        while let Some(curr) = queue.pop_front() {
+            nseen += 1;
+            for &(next, edge) in &node_to_edges[curr as usize] {
+                if free_edges[edge as usize] && !seen.replace(next as usize, true) {
+                    queue.push_back(next);
+                }
+            }
+        }
+        if nseen != node_to_edges.len() {
+            return nseen * (node_to_edges.len() - nseen);
         }
     }
 
