@@ -128,8 +128,8 @@ pub fn part2(input: &Input) -> usize {
         edges.sort_unstable_by_key(|&(n, _)| counts[n]);
     }
 
-    let mut states = FxHashMap::default();
-    let mut new_states = FxHashMap::default();
+    let mut states = FxIndexMap::default();
+    let mut new_states = FxIndexMap::default();
     let mut to_add = Vec::new();
 
     let mut queue = VecDeque::new();
@@ -157,7 +157,7 @@ pub fn part2(input: &Input) -> usize {
         added[curr] = true;
 
         new_states.clear();
-        for (mut state, cost) in states.drain() {
+        for (mut state, cost) in states.drain(..) {
             state.insert(curr as u8, curr as u8);
             new_states.insert(state, cost);
         }
@@ -190,7 +190,7 @@ pub fn part2(input: &Input) -> usize {
                     if unexplored_edges[node] == 0 {
                         let node = node as u8;
                         new_states.clear();
-                        for (mut state, cost) in states.drain() {
+                        for (mut state, cost) in states.drain(..) {
                             if let idx @ ..=7 = state.index_of(node) {
                                 if state.get(idx) != (node, node) {
                                     continue;
