@@ -14,40 +14,39 @@ pub fn input_generator(input: &str) -> Input {
         .collect()
 }
 
-fn count(pat: &[u8], nums: &[usize], dp: &mut Vec<usize>) -> usize {
-    dp.resize((pat.len() + 1) * 2, 0);
-    let (mut curr_dp, mut prev_dp) = dp.split_at_mut(pat.len() + 1);
+fn count(pat: &[u8], nums: impl Iterator<Item = usize>, dp: &mut Vec<usize>) -> usize {
+    dp.resize((pat.len() + 2) * 2, 0);
+    let (mut curr_dp, mut prev_dp) = dp.split_at_mut(pat.len() + 2);
 
-    prev_dp.fill(0);
-    prev_dp[pat.len()] = 1;
-    for j in (0..pat.len()).rev().take_while(|&j| pat[j] != b'#') {
-        prev_dp[j] = 1;
-    }
+    let idx = pat.iter().position(|&b| b == b'#').unwrap_or(pat.len());
+    prev_dp[..2 + idx].fill(1);
+    prev_dp[2 + idx..].fill(0);
 
-    for &n in nums.iter().rev() {
+    for n in nums {
         let mut streak = 0;
-        curr_dp[pat.len()] = 0;
-        for (j, &p) in pat.iter().enumerate().rev() {
+        curr_dp[0] = 0;
+        curr_dp[1] = 0;
+        for (j, &p) in pat.iter().enumerate() {
             streak = if p == b'.' { 0 } else { streak + 1 };
-            curr_dp[j] = if p == b'#' { 0 } else { curr_dp[j + 1] };
+            curr_dp[2 + j] = if p == b'#' { 0 } else { curr_dp[1 + j] };
 
-            let prev_pat = pat.get(j.wrapping_sub(1));
-            let next = pat.get(j + n);
-            if streak >= n && prev_pat != Some(&b'#') && next != Some(&b'#') {
-                curr_dp[j] += prev_dp[j + n + (j + n < pat.len()) as usize];
+            let prev = pat.get(j.wrapping_sub(n));
+            let next = pat.get(j + 1);
+            if streak >= n && prev != Some(&b'#') && next != Some(&b'#') {
+                curr_dp[2 + j] += prev_dp[2 + j - n - 1];
             }
         }
         swap(&mut curr_dp, &mut prev_dp);
     }
 
-    prev_dp[0]
+    prev_dp[pat.len() + 1]
 }
 
 pub fn part1(input: &Input) -> usize {
     let mut dp = Vec::new();
     input
         .iter()
-        .map(|(pat, nums)| count(pat, nums, &mut dp))
+        .map(|(pat, nums)| count(pat, nums.iter().copied(), &mut dp))
         .sum()
 }
 
@@ -55,27 +54,24 @@ pub fn part2(input: &Input) -> usize {
     input
         .par_iter()
         .fold(
-            || (0, Vec::new(), Vec::new(), Vec::new()),
-            |(mut sum, mut dp, mut new_pat, mut new_nums), &(pat, ref nums)| {
+            || (0, Vec::new(), Vec::new()),
+            |(mut sum, mut dp, mut new_pat), &(pat, ref nums)| {
                 new_pat.clear();
                 new_pat.reserve(pat.len() * 5 + 4);
                 new_pat.extend_from_slice(pat);
 
-                new_nums.clear();
-                new_nums.reserve(nums.len() * 5);
-                new_nums.extend_from_slice(nums);
-
                 for _ in 1..5 {
                     new_pat.push(b'?');
                     new_pat.extend_from_slice(pat);
-                    new_nums.extend_from_slice(nums);
                 }
 
-                sum += count(&new_pat, &new_nums, &mut dp);
+                let nums = itertools::repeat_n(nums, 5).flatten().copied();
 
-                (sum, dp, new_pat, new_nums)
+                sum += count(&new_pat, nums, &mut dp);
+
+                (sum, dp, new_pat)
             },
         )
-        .map(|(sum, _, _, _)| sum)
+        .map(|(sum, _, _)| sum)
         .sum()
 }
