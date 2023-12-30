@@ -130,7 +130,6 @@ pub fn part2(input: &Input) -> usize {
 
     let mut states = FxIndexMap::default();
     let mut new_states = FxIndexMap::default();
-    let mut to_add = Vec::new();
 
     let mut queue = VecDeque::new();
     let mut unexplored_edges = graph.iter().map(|edges| edges.len()).collect::<Vec<_>>();
@@ -168,7 +167,8 @@ pub fn part2(input: &Input) -> usize {
                 unexplored_edges[curr] -= 1;
                 unexplored_edges[next] -= 1;
 
-                for (&(mut state), &w) in &states {
+                for i in 0..states.len() {
+                    let (&(mut state), &w) = states.get_index(i).unwrap();
                     let (edge1, edge2) = (state.index_of(curr as u8), state.index_of(next as u8));
                     if edge1 < 8 && edge2 < 8 && edge1 != edge2 {
                         let ((n1, m1), (n2, m2)) = (state.get(edge1), state.get(edge2));
@@ -178,12 +178,9 @@ pub fn part2(input: &Input) -> usize {
                         state.remove(min(edge1, edge2));
                         state.insert(min(other1, other2), max(other1, other2));
 
-                        to_add.push((state, w + cost));
+                        let best = states.entry(state).or_default();
+                        *best = max(*best, w + cost);
                     }
-                }
-                for (state, cost) in to_add.drain(..) {
-                    let best = states.entry(state).or_default();
-                    *best = max(*best, cost);
                 }
 
                 for node in [curr, next] {
