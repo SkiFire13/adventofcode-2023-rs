@@ -15,31 +15,34 @@ pub fn input_generator(input: &str) -> Input {
 }
 
 fn count(pat: &[u8], nums: impl Iterator<Item = usize>, dp: &mut Vec<usize>) -> usize {
-    dp.resize((pat.len() + 2) * 2, 0);
-    let (mut curr_dp, mut prev_dp) = dp.split_at_mut(pat.len() + 2);
+    dp.resize(pat.len() + (pat.len() + 1) * 2, 0);
+    let (streak, dp) = dp.split_at_mut(pat.len());
+    let (mut cdp, mut pdp) = dp.split_at_mut(pat.len() + 1);
 
-    let idx = pat.iter().position(|&b| b == b'#').unwrap_or(pat.len());
-    prev_dp[..2 + idx].fill(1);
-    prev_dp[2 + idx..].fill(0);
-
-    for n in nums {
-        let mut streak = 0;
-        curr_dp[0] = 0;
-        curr_dp[1] = 0;
-        for (j, &p) in pat.iter().enumerate() {
-            streak = if p == b'.' { 0 } else { streak + 1 };
-            curr_dp[2 + j] = if p == b'#' { 0 } else { curr_dp[1 + j] };
-
-            let prev = pat.get(j.wrapping_sub(n));
-            let next = pat.get(j + 1);
-            if streak >= n && prev != Some(&b'#') && next != Some(&b'#') {
-                curr_dp[2 + j] += prev_dp[2 + j - n - 1];
-            }
-        }
-        swap(&mut curr_dp, &mut prev_dp);
+    let mut prev_streak = 0;
+    for (&b, s) in izip!(pat, &mut *streak) {
+        prev_streak = if b != b'.' { prev_streak + 1 } else { 0 };
+        *s = prev_streak;
     }
 
-    prev_dp[pat.len() + 1]
+    let wall_idx = pat.iter().position(|&b| b == b'#').unwrap_or(pat.len());
+    pdp[..1 + wall_idx].fill(1);
+    pdp[1 + wall_idx..].fill(0);
+
+    for n in nums {
+        cdp[..n].fill(0);
+        cdp[n] = if streak[n - 1] == n { pdp[0] } else { 0 };
+        let mut prev = cdp[n];
+
+        for (w, &s, d, &pd) in izip!(pat.windows(n + 1), &streak[n..], &mut cdp[n + 1..], &*pdp) {
+            let p1 = if w[n] != b'#' { prev } else { 0 };
+            let p2 = if s >= n && w[0] != b'#' { pd } else { 0 };
+            [*d, prev] = [p1 + p2; 2];
+        }
+        swap(&mut cdp, &mut pdp);
+    }
+
+    pdp[pat.len()]
 }
 
 pub fn part1(input: &Input) -> usize {
@@ -51,8 +54,11 @@ pub fn part1(input: &Input) -> usize {
 }
 
 pub fn part2(input: &Input) -> usize {
+    let threads = std::thread::available_parallelism().map_or(16, |n| n.get());
     input
         .par_iter()
+        .with_min_len(input.len() / (2 * threads))
+        .with_max_len(input.len() / threads)
         .fold(
             || (0, Vec::new(), Vec::new()),
             |(mut sum, mut dp, mut new_pat), &(pat, ref nums)| {
