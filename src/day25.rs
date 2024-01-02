@@ -52,9 +52,9 @@ pub fn part1(input: &Input) -> usize {
     let random_candidates = [()]
         .into_iter()
         .flat_map(|_| (1..node_to_edges.len() as u16).collect::<HashSet<_>>());
-
-    for end in [best_candidate].into_iter().chain(random_candidates) {
+    for end in ichain!([best_candidate], random_candidates) {
         free_edges.fill(true);
+
         for _ in 0..3 {
             prev.fill((u16::MAX, u16::MAX));
             prev[0] = (u16::MAX - 1, u16::MAX - 1);
@@ -72,26 +72,24 @@ pub fn part1(input: &Input) -> usize {
                 }
             }
 
-            assert_ne!(prev[end as usize], (u16::MAX, u16::MAX));
-
             let (mut curr, mut edge) = prev[end as usize];
             while (curr, edge) != (u16::MAX - 1, u16::MAX - 1) {
-                let inv_edge_used = free_edges[edge as usize ^ 1];
-                free_edges.set(edge as usize, !inv_edge_used);
+                let inv_edge_free = free_edges[edge as usize ^ 1];
+                free_edges.set(edge as usize, !inv_edge_free);
                 free_edges.set(edge as usize ^ 1, true);
                 (curr, edge) = prev[curr as usize];
             }
         }
 
-        queue.resize(1, 0);
         seen.fill(false);
         seen.set(0, true);
+        queue.resize(1, 0);
         let mut nseen = 1;
         while let Some(curr) = queue.pop_front() {
-            nseen += 1;
             for &(next, edge) in &node_to_edges[curr as usize] {
                 if free_edges[edge as usize] && !seen.replace(next as usize, true) {
                     queue.push_back(next);
+                    nseen += 1;
                 }
             }
         }
